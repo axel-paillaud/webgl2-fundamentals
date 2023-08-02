@@ -7,13 +7,22 @@
     <title>Vite App</title>
   </head>
   <body>
-    <canvas id="c"></canvas>
-    <button id="left-button">Left Button</button>
-    <button id="right-button">Right Button</button>
-    <button id="rotate-button">Rotate Button</button>
-    <button id="scale-up-button">Scale Up Button</button>
-    <button id="scale-down-button">Scale Down Button</button>
+    <canvas id="canvas"></canvas>
+    <div id="uiContainer">
+      <div id="ui">
+        <div id="x"></div>
+        <div id="y"></div>
+        <div id="z"></div>
+        <div id="angleX"></div>
+        <div id="angleY"></div>
+        <div id="angleZ"></div>
+        <div id="scaleX"></div>
+        <div id="scaleY"></div>
+        <div id="scaleZ"></div>
+      </div>
+    </div>
     <script src="webgl-utils.js"></script>
+    <script src="webgl-lessons-ui.js"></script>
     <script type="module" src="/main.js"></script>
     <script src="script.js"></script>
   </body>
