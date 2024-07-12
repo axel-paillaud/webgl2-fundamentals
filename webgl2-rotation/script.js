@@ -29,6 +29,7 @@ async function main() {
     var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
     var colorLocation = gl.getUniformLocation(program, "u_color");
     var translationLocation = gl.getUniformLocation(program, "u_translation");
+    var rotationLocation = gl.getUniformLocation(program, "u_rotation");
 
     // Create a buffer
     var positionBuffer = gl.createBuffer();
@@ -59,6 +60,11 @@ async function main() {
     // First let's make some variables
     // to hold the translation,
     var translation = [0, 0];
+    
+    // hold rotation
+    var rotation = [0, 1];
+
+    // hold color
     var color = [Math.random(), Math.random(), Math.random(), 1];
 
     drawScene();
@@ -66,12 +72,21 @@ async function main() {
     // Setup a ui.
     webglLessonsUI.setupSlider("#x", {slide: updatePosition(0), max: gl.canvas.width });
     webglLessonsUI.setupSlider("#y", {slide: updatePosition(1), max: gl.canvas.height});
+    webglLessonsUI.setupSlider("#angle", {slide: updateAngle, max: 360});
 
     function updatePosition(index) {
         return function(event, ui) {
             translation[index] = ui.value;
             drawScene();
         };
+    }
+
+    function updateAngle(event, ui) {
+        var angleInDegrees = 360 - ui.value;
+        var angleInRadians = angleInDegrees * Math.PI / 180;
+        rotation[0] = Math.sin(angleInRadians);
+        rotation[1] = Math.cos(angleInDegrees);
+        drawScene();
     }
 
     // Draw the scene.
@@ -100,6 +115,9 @@ async function main() {
 
         // Set the translation.
         gl.uniform2fv(translationLocation, translation);
+
+        // Set the rotation
+        gl.uniform2fv(rotationLocation, rotation);
 
         // Draw the geometry.
         var primitiveType = gl.TRIANGLES;
