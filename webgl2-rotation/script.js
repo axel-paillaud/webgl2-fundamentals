@@ -85,7 +85,7 @@ async function main() {
         var angleInDegrees = 360 - ui.value;
         var angleInRadians = angleInDegrees * Math.PI / 180;
         rotation[0] = Math.sin(angleInRadians);
-        rotation[1] = Math.cos(angleInDegrees);
+        rotation[1] = Math.cos(angleInRadians);
         drawScene();
     }
 
