@@ -4,13 +4,26 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css">
     <title>Vite App</title>
   </head>
   <body>
-    <canvas id="c"></canvas>
-    <button id="left-button">Left Button</button>
-    <button id="right-button">Right Button</button>
-    <script src="webgl-utils.js"></script>
-    <script type="module" src="/main.js"></script>
+    <canvas id="canvas"></canvas>
+    <div id="uiContainer">
+      <div id="ui">
+        <div id="x"></div>
+        <div id="y"></div>
+      </div>
+    </div>
+    <!--
+for most samples webgl-utils only provides shader compiling/linking and
+canvas resizing because why clutter the examples with code that's the same in every sample.
+See https://webgl2fundamentals.org/webgl/lessons/webgl-boilerplate.html
+and https://webgl2fundamentals.org/webgl/lessons/webgl-resizing-the-canvas.html
+for webgl-utils, m3, m4, and webgl-lessons-ui.
+-->
+    <script src="https://webgl2fundamentals.org/webgl/resources/webgl-utils.js"></script>
+    <script src="https://webgl2fundamentals.org/webgl/resources/webgl-lessons-ui.js"></script>
+    <script src="script.js"></script>
   </body>
 </html>
