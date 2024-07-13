@@ -1,215 +1,125 @@
-var vertexShaderSource = `#version 300 es
-in vec2 a_position;
+"use strict";
 
-uniform vec2 u_resolution;
-uniform vec2 u_translation;
-uniform vec2 u_rotation;
-uniform vec2 u_scale;
-
-void main() {
-    // Scale the position
-    vec2 scaledPosition = a_position * u_scale;
-
-    // Rotate the position
-    vec2 rotatedPosition = vec2(
-        scaledPosition.x * u_rotation.y + scaledPosition.y * u_rotation.x,
-        scaledPosition.y * u_rotation.y - scaledPosition.x * u_rotation.x
-    );
-
-    // Add in the translation
-    vec2 position = rotatedPosition + u_translation;
-    
-    // convert the position from pixels to 0.0 to 1.0
-    vec2 zeroToOne = position / u_resolution;
-
-    // convert from 0->1 to 0->2
-    vec2 zeroToTwo = zeroToOne * 2.0;
-
-    // convert from 0->2 to -1->+1 (clipspace)
-    vec2 clipSpace = zeroToTwo - 1.0;
-    gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+async function loadShaderSource(url) {
+    const response = await fetch(url);
+    return await response.text();
 }
-`;
 
-var fragmentShaderSource = `#version 300 es
-precision highp float;
-
-uniform vec4 u_color;
-
-out vec4 outColor;
-
-void main() {
-    outColor = u_color;
-}
-`;
-
-function main() {
-    var canvas = document.getElementById("c");
-    var rightButton = document.getElementById("right-button");
-    var leftButton = document.getElementById("left-button");
-    var rotationButton = document.getElementById("rotate-button");
-    var scaleUpButton = document.getElementById("scale-up-button");
-    var scaleDownButton = document.getElementById("scale-down-button");
-
+async function main() {
+    // Get A WebGL context
+    /** @type {HTMLCanvasElement} */
+    var canvas = document.querySelector("#canvas");
     var gl = canvas.getContext("webgl2");
     if (!gl) {
-        console.log("WebGL not available for this browser, sorry !");
         return;
     }
 
-    var program = webglUtils.createProgramFromSources(gl, [vertexShaderSource, fragmentShaderSource]);
+    // Load shaders
+    const vertexShaderSource = await loadShaderSource('vertexShader.glsl');
+    const fragmentShaderSource = await loadShaderSource('fragmentShader.glsl');
 
-    var positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
-    var resolutionUniformLocation = gl.getUniformLocation(program, 'u_resolution');
-    var colorLocation = gl.getUniformLocation(program, 'u_color');
-    var translationLocation = gl.getUniformLocation(program, 'u_translation');
-    var rotationLocation = gl.getUniformLocation(program, 'u_rotation');
-    var scaleLocation = gl.getUniformLocation(program, 'u_scale');
+    // Use our boilerplate utils to compile the shaders and link into a program
+    var program = webglUtils.createProgramFromSources(gl,
+        [vertexShaderSource, fragmentShaderSource]);
 
+    // look up where the vertex data needs to go.
+    var positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+
+    // look up uniform locations
+    var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
+    var colorLocation = gl.getUniformLocation(program, "u_color");
+    var translationLocation = gl.getUniformLocation(program, "u_translation");
+    var rotationLocation = gl.getUniformLocation(program, "u_rotation");
+
+    // Create a buffer
     var positionBuffer = gl.createBuffer();
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-
+    // Create a vertex array object (attribute state)
     var vao = gl.createVertexArray();
+
+    // and make it the one we're currently working with
     gl.bindVertexArray(vao);
 
+    // Turn on the attribute
     gl.enableVertexAttribArray(positionAttributeLocation);
 
-    var size = 2;
-    var type = gl.FLOAT;
-    var normalize = false;
-    var stride = 0;
-    var offset = 0;
-    gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, offset);
+    // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    // Set Geometry.
+    setGeometry(gl);
 
-    var translation = [100, 100];
+    // Tell the attribute how to get data out of positionBuffer (ARRAY_BUFFER)
+    var size = 2;          // 2 components per iteration
+    var type = gl.FLOAT;   // the data is 32bit floats
+    var normalize = false; // don't normalize the data
+    var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
+    var offset = 0;        // start at the beginning of the buffer
+    gl.vertexAttribPointer(
+        positionAttributeLocation, size, type, normalize, stride, offset);
+
+    // First let's make some variables
+    // to hold the translation,
+    var translation = [0, 0];
+    
+    // hold rotation
     var rotation = [0, 1];
-    var scale = [1, 1];
-    var angle = 0;
-    var size = 0;
-    var width = 100;
-    var height = 30;
+
+    // hold color
     var color = [Math.random(), Math.random(), Math.random(), 1];
 
     drawScene();
 
-    var mousedownID = -1;
-    rightButton.addEventListener('mousedown', (e) => {
-        if (mousedownID == -1) {
-            mousedownID = setInterval(() => {
-                translation[0] += 1;
-                drawScene();
-            }, 10);
+    // Setup a ui.
+    webglLessonsUI.setupSlider("#x", {slide: updatePosition(0), max: gl.canvas.width });
+    webglLessonsUI.setupSlider("#y", {slide: updatePosition(1), max: gl.canvas.height});
+    webglLessonsUI.setupSlider("#angle", {slide: updateAngle, max: 360});
+
+    function updatePosition(index) {
+        return function(event, ui) {
+            translation[index] = ui.value;
+            drawScene();
         };
-    });
+    }
 
-    rightButton.addEventListener('mouseup', () => {
-        if (mousedownID != -1) {
-            clearInterval(mousedownID);
-            mousedownID = -1;
-        }
-    });
-    
-    leftButton.addEventListener('mousedown', (e) => {
-        if (mousedownID == -1) {
-            mousedownID = setInterval(() => {
-                translation[0] -= 1;
-                drawScene();
-            }, 10);
-        };
-    });
+    function updateAngle(event, ui) {
+        var angleInDegrees = 360 - ui.value;
+        var angleInRadians = angleInDegrees * Math.PI / 180;
+        rotation[0] = Math.sin(angleInRadians);
+        rotation[1] = Math.cos(angleInRadians);
+        drawScene();
+    }
 
-    leftButton.addEventListener('mouseup', () => {
-        if (mousedownID != -1) {
-            clearInterval(mousedownID);
-            mousedownID = -1;
-        }
-    });
-
-    rotationButton.addEventListener('mousedown', (e) => {
-        if (mousedownID == -1) {
-            mousedownID = setInterval(() => {
-                let angleInDegrees = 360 - angle;
-                let angleInRadians = angleInDegrees * Math.PI / 180;
-                rotation[0] = Math.sin(angleInRadians);
-                rotation[1] = Math.cos(angleInRadians);
-                angle++;
-                drawScene();
-            }, 10);
-        };
-    });
-
-    rotationButton.addEventListener('mouseup', () => {
-        if (mousedownID != -1) {
-            clearInterval(mousedownID);
-            mousedownID = -1;
-        }
-    });
-
-    scaleUpButton.addEventListener('mousedown', (e) => {
-        if (mousedownID == -1) {
-            mousedownID = setInterval(() => {
-                size += 0.05;
-                scale[0] = size;
-                scale[1] = size;
-                drawScene();
-            }, 10);
-        };
-    });
-
-    scaleUpButton.addEventListener('mouseup', () => {
-        if (mousedownID != -1) {
-            clearInterval(mousedownID);
-            mousedownID = -1;
-        }
-    });
-
-    scaleDownButton.addEventListener('mousedown', (e) => {
-        if (mousedownID == -1) {
-            mousedownID = setInterval(() => {
-                size -= 0.05;
-                scale[0] = size;
-                scale[1] = size;
-                drawScene();
-            }, 10);
-        };
-    });
-
-    scaleDownButton.addEventListener('mouseup', () => {
-        if (mousedownID != -1) {
-            clearInterval(mousedownID);
-            mousedownID = -1;
-        }
-    });
-
+    // Draw the scene.
     function drawScene() {
         webglUtils.resizeCanvasToDisplaySize(gl.canvas);
 
+        // Tell WebGL how to convert from clip space to pixels
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
+        // Clear the canvas
         gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+        // Tell it to use our program (pair of shaders)
         gl.useProgram(program);
-        gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+
+        // Bind the attribute/buffer set we want.
         gl.bindVertexArray(vao);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-        //setRectangle(gl, translation[0], translation[1], width, height);
-        setGeometry(gl);
-        
+        // Pass in the canvas resolution so we can convert from
+        // pixels to clipspace in the shader
+        gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+
         // Set the color.
-        gl.uniform4f(colorLocation, color[0], color[1], color[2], color[3]);
+        gl.uniform4fv(colorLocation, color);
 
         // Set the translation.
-        gl.uniform2f(translationLocation, translation[0], translation[1]);
+        gl.uniform2fv(translationLocation, translation);
 
-        // Set the rotation.
-        gl.uniform2f(rotationLocation, rotation[0], rotation[1]);
+        // Set the rotation
+        gl.uniform2fv(rotationLocation, rotation);
 
-        // Set the scale.
-        gl.uniform2f(scaleLocation, scale[0], scale[0]);
-
+        // Draw the geometry.
         var primitiveType = gl.TRIANGLES;
         var offset = 0;
         var count = 18;
@@ -217,53 +127,37 @@ function main() {
     }
 }
 
-function randomInt(range) {
-    return Math.floor(Math.random() * range);
-}
-
-function setRectangle(gl, x, y, width, height) {
-    var x1 = x;
-    var x2 = x + width;
-    var y1 = y;
-    var y2 = y + height;
-
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-        x1, y1,
-        x2, y1,
-        x1, y2,
-        x1, y2,
-        x2, y1,
-        x2, y2
-    ]), gl.STATIC_DRAW);
-}
-
+// Fill the current ARRAY_BUFFER buffer
+// with the values that define a letter 'F'.
 function setGeometry(gl) {
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-        // left column
-        0,0,
-        30, 0,
-        0, 150,
-        0, 150,
-        30, 0,
-        30, 150,
+    gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array([
+            // left column
+            0, 0,
+            30, 0,
+            0, 150,
+            0, 150,
+            30, 0,
+            30, 150,
 
-        //top rung
-        30, 0,
-        100, 0,
-        30, 30,
-        30, 30,
-        100, 0,
-        100, 30,
+            // top rung
+            30, 0,
+            100, 0,
+            30, 30,
+            30, 30,
+            100, 0,
+            100, 30,
 
-        // middle rung
-        30, 60,
-        67, 60,
-        30, 90,
-        30, 90,
-        67, 60,
-        67, 90
-    ]), gl.STATIC_DRAW);
+            // middle rung
+            30, 60,
+            67, 60,
+            30, 90,
+            30, 90,
+            67, 60,
+            67, 90,
+        ]),
+        gl.STATIC_DRAW);
 }
 
 main();
-
