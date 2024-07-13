@@ -30,6 +30,7 @@ async function main() {
     var colorLocation = gl.getUniformLocation(program, "u_color");
     var translationLocation = gl.getUniformLocation(program, "u_translation");
     var rotationLocation = gl.getUniformLocation(program, "u_rotation");
+    var scaleLocation = gl.getUniformLocation(program, "u_scale");
 
     // Create a buffer
     var positionBuffer = gl.createBuffer();
@@ -57,12 +58,9 @@ async function main() {
     gl.vertexAttribPointer(
         positionAttributeLocation, size, type, normalize, stride, offset);
 
-    // First let's make some variables
-    // to hold the translation,
     var translation = [0, 0];
-    
-    // hold rotation
     var rotation = [0, 1];
+    var scale = [1, 1];
 
     // hold color
     var color = [Math.random(), Math.random(), Math.random(), 1];
@@ -73,6 +71,8 @@ async function main() {
     webglLessonsUI.setupSlider("#x", {slide: updatePosition(0), max: gl.canvas.width });
     webglLessonsUI.setupSlider("#y", {slide: updatePosition(1), max: gl.canvas.height});
     webglLessonsUI.setupSlider("#angle", {slide: updateAngle, max: 360});
+    webglLessonsUI.setupSlider("#scaleX", {value: scale[0], slide: updateScale(0), min: -5, max: 5, step: 0.01, precision: 2});
+    webglLessonsUI.setupSlider("#scaleY", {value: scale[1], slide: updateScale(1), min: -5, max: 5, step: 0.01, precision: 2});
 
     function updatePosition(index) {
         return function(event, ui) {
@@ -87,6 +87,13 @@ async function main() {
         rotation[0] = Math.sin(angleInRadians);
         rotation[1] = Math.cos(angleInRadians);
         drawScene();
+    }
+
+    function updateScale(index) {
+        return function(event, ui) {
+            scale[index] = ui.value;
+            drawScene();
+        }
     }
 
     // Draw the scene.
@@ -118,6 +125,9 @@ async function main() {
 
         // Set the rotation
         gl.uniform2fv(rotationLocation, rotation);
+
+        // Set scale
+        gl.uniform2fv(scaleLocation, scale);
 
         // Draw the geometry.
         var primitiveType = gl.TRIANGLES;
